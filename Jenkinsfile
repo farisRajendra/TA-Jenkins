@@ -2,27 +2,35 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_PROJECT_NAME = 'laravelapp'
+        COMPOSE_CMD = 'docker-compose'
     }
 
     stages {
-        stage('Clone Repo') {
+        stage('Checkout Repo') {
             steps {
                 git branch: 'master', url: 'https://github.com/farisRajendra/TA-Jenkins.git'
             }
         }
 
-        stage('Build and Run Docker Compose') {
+        stage('Build and Run Containers') {
             steps {
-                sh 'docker-compose down -v || true'
-                sh 'docker-compose up -d --build'
+                // Hentikan dan hapus container jika ada
+                sh "${COMPOSE_CMD} down -v || true"
+                // Bangun dan jalankan container
+                sh "${COMPOSE_CMD} up -d --build"
+                // Tunggu beberapa detik untuk memastikan database siap
+                sleep(time: 15, unit: 'SECONDS')
             }
         }
 
-        stage('Setup Laravel') {
+        stage('Laravel Setup') {
             steps {
-                sh 'docker exec laravel-app php artisan key:generate'
-                sh 'docker exec laravel-app php artisan migrate'
+                // Install dependencies
+                sh "${COMPOSE_CMD} exec app composer install"
+                // Generate key
+                sh "${COMPOSE_CMD} exec app php artisan key:generate"
+                // Jalankan migrasi
+                sh "${COMPOSE_CMD} exec app php artisan migrate --force"
             }
         }
     }
